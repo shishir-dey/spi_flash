@@ -9,4 +9,8 @@ repository = "https://github.com/shishir-dey/spi_flash"
 keywords = ["spi", "flash", "no-std"]
 categories = ["embedded", "hardware-support"]
 
+[features]
+default = ["std"]
+std = []
+
 [dependencies]

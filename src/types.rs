@@ -1,3 +1,4 @@
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum Manufactor {
     Error = 0,
     Winbond = 0xEF,
@@ -19,7 +20,7 @@ pub enum Manufactor {
     Puya = 0x85,
 }
 
-#[derive(Clone, Copy)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum Size {
     Error = 0,
     Mbit1 = 0x11,

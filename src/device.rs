@@ -7,19 +7,19 @@ pub const BLOCK_SIZE: u32 = 65536;
 
 #[allow(dead_code)]
 pub struct SpiFlash<SPI: SpiInterface, CS: CsPin, Timer: Delay> {
-    spi: SPI,
-    cs: CS,
-    timer: Timer,
-    manufactor: Manufactor,
-    size: Size,
-    initialised: bool,
-    memory_type: u8,
-    lock: bool,
-    reserved: u8,
-    pin: u32,
-    page_count: u32,
-    sector_count: u32,
-    block_count: u32,
+    pub spi: SPI,
+    pub cs: CS,
+    pub timer: Timer,
+    pub manufactor: Manufactor,
+    pub size: Size,
+    pub initialised: bool,
+    pub memory_type: u8,
+    pub lock: bool,
+    pub reserved: u8,
+    pub pin: u32,
+    pub page_count: u32,
+    pub sector_count: u32,
+    pub block_count: u32,
 }
 
 impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
