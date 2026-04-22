@@ -1,0 +1,105 @@
+pub enum Manufactor {
+    Error = 0,
+    Winbond = 0xEF,
+    Issi = 0x9D,
+    Micron = 0x20,
+    GigaDevice = 0xC8,
+    Macronix = 0xC2,
+    Spansion = 0x01,
+    Amic = 0x37,
+    Sst = 0xBF,
+    Hyundai = 0xAD,
+    Atmel = 0x1F,
+    Fudan = 0xA1,
+    Esmt = 0x8C,
+    Intel = 0x89,
+    Sanyo = 0x62,
+    Fujitsu = 0x04,
+    Eon = 0x1C,
+    Puya = 0x85,
+}
+
+#[derive(Clone, Copy)]
+pub enum Size {
+    Error = 0,
+    Mbit1 = 0x11,
+    Mbit2 = 0x12,
+    Mbit4 = 0x13,
+    Mbit8 = 0x14,
+    Mbit16 = 0x15,
+    Mbit32 = 0x16,
+    Mbit64 = 0x17,
+    Mbit128 = 0x18,
+    Mbit256 = 0x19,
+    Mbit512 = 0x20,
+}
+
+pub enum Command {
+    ReadSFDP = 0x5A,
+    ID = 0x90,
+    JEDECID = 0x9F,
+    UniqueID = 0x4B,
+    WriteDisable = 0x04,
+    ReadStatus1 = 0x05,
+    ReadStatus2 = 0x35,
+    ReadStatus3 = 0x15,
+    WriteStatusEn = 0x50,
+    WriteStatus1 = 0x01,
+    WriteStatus2 = 0x31,
+    WriteStatus3 = 0x11,
+    WriteEnable = 0x06,
+    Addr4ByteEn = 0xB7,
+    Addr4ByteDis = 0xE9,
+    PageProg3Add = 0x02,
+    PageProg4Add = 0x12,
+    ReadData3Add = 0x03,
+    ReadData4Add = 0x13,
+    FastRead3Add = 0x0B,
+    FastRead4Add = 0x0C,
+    SectorErase3Add = 0x20,
+    SectorErase4Add = 0x21,
+    BlockErase3Add = 0xD8,
+    BlockErase4Add = 0xDC,
+    ChipErase1 = 0x60,
+    ChipErase2 = 0xC7,
+    Suspend = 0x75,
+    Resume = 0x7A,
+    PowerDown = 0xB9,
+    Release = 0xAB,
+    FramSerNo = 0xC3,
+}
+
+pub enum Status1 {
+    Busy = 0x01,
+    Wel = 0x02,
+    Bp0 = 0x04,
+    Bp1 = 0x08,
+    Bp2 = 0x10,
+    Tp = 0x20,
+    Sec = 0x40,
+    Srp0 = 0x80,
+}
+
+pub enum Status2 {
+    Srp1 = 0x01,
+    Qe = 0x02,
+    Reserve1 = 0x04,
+    Lb0 = 0x08,
+    Lb1 = 0x10,
+    Lb2 = 0x20,
+    Cmp = 0x40,
+    Sus = 0x80,
+}
+
+pub enum Status3 {
+    Reserve1 = 0x01,
+    Reserve2 = 0x02,
+    Wps = 0x04,
+    Reserve3 = 0x08,
+    Reserve4 = 0x10,
+    Drv0 = 0x20,
+    Drv1 = 0x40,
+    Hold = 0x80,
+}
+
+pub const DUMMY_BYTE: u8 = 0xA5;
