@@ -1,5 +1,6 @@
 use crate::error::*;
 use crate::interface::{CsPin, Delay, SpiInterface};
+use crate::misc::*;
 use crate::types::*;
 
 pub const PAGE_SIZE: u32 = 256;
@@ -151,8 +152,11 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         &mut self,
         timeout: u32,
     ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
-        let rx = self.read_reg_1()?;
-        while rx & Status1::Busy as u8 != 0 {
+        loop {
+            let rx = self.read_reg_1()?;
+            if rx & Status1::Busy as u8 == 0 {
+                break;
+            }
             self.timer.delay_us(timeout);
         }
         Ok(())
@@ -254,6 +258,70 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         self.wait_for_writing(100);
         self.write_disable();
         self.unlock();
+        Ok(())
+    }
+
+    pub fn write(
+        &mut self,
+        page_number: u32,
+        data: &[u8],
+        size: u32,
+        offset: u32,
+    ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
+        if page_number >= self.page_count {
+            return Err(SpiFlashError::Protocol);
+        }
+
+        if offset >= PAGE_SIZE {
+            return Err(SpiFlashError::Protocol);
+        }
+
+        let maximum = PAGE_SIZE - offset;
+        let size = if size > maximum { maximum } else { size } as usize;
+
+        let address = page_to_address(page_number) + offset;
+
+        self.lock()?;
+        self.write_enable()?;
+        self.cs_drive(true)?;
+
+        if self.block_count >= 512 {
+            self.spi
+                .write(&[
+                    Command::PageProg4Add as u8,
+                    ((address & 0xFF000000) >> 24) as u8,
+                    ((address & 0x00FF0000) >> 16) as u8,
+                    ((address & 0x0000FF00) >> 8) as u8,
+                    (address & 0x000000FF) as u8,
+                ])
+                .map_err(|e| {
+                    let _ = self.cs_drive(false);
+                    SpiFlashError::Spi(e)
+                })?;
+        } else {
+            self.spi
+                .write(&[
+                    Command::PageProg3Add as u8,
+                    ((address & 0x00FF0000) >> 16) as u8,
+                    ((address & 0x0000FF00) >> 8) as u8,
+                    (address & 0x000000FF) as u8,
+                ])
+                .map_err(|e| {
+                    let _ = self.cs_drive(false);
+                    SpiFlashError::Spi(e)
+                })?;
+        }
+
+        self.spi.write(&data[..size]).map_err(|e| {
+            let _ = self.cs_drive(false);
+            SpiFlashError::Spi(e)
+        })?;
+
+        self.cs_drive(false)?;
+        self.wait_for_writing(100)?;
+        self.write_disable()?;
+        self.unlock()?;
+
         Ok(())
     }
 }
