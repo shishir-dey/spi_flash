@@ -1,3 +1,4 @@
+use crate::error::*;
 use crate::interface::{CsPin, Delay, SpiInterface};
 use crate::types::*;
 
@@ -41,7 +42,7 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         }
     }
 
-    pub fn lock(&mut self) -> Result<(), SPI::SpiError> {
+    pub fn lock(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         while self.lock {
             self.timer.delay_us(1000);
         }
@@ -49,12 +50,15 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
-    pub fn unlock(&mut self) -> Result<(), SPI::SpiError> {
+    pub fn unlock(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.lock = false;
         Ok(())
     }
 
-    pub fn cs_drive(&mut self, state: bool) -> Result<(), SPI::SpiError> {
+    pub fn cs_drive(
+        &mut self,
+        state: bool,
+    ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         match state {
             true => {
                 self.cs.set_low();
@@ -66,21 +70,21 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
-    pub fn write_enable(&mut self) -> Result<(), SPI::SpiError> {
+    pub fn write_enable(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.cs_drive(true);
         self.spi.write(&[Command::WriteEnable as u8]);
         self.cs_drive(false);
         Ok(())
     }
 
-    pub fn write_disable(&mut self) -> Result<(), SPI::SpiError> {
+    pub fn write_disable(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.cs_drive(true);
         self.spi.write(&[Command::WriteDisable as u8]);
         self.cs_drive(false);
         Ok(())
     }
 
-    fn read_reg_1(&mut self) -> Result<u8, SPI::SpiError> {
+    fn read_reg_1(&mut self) -> Result<u8, SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.cs_drive(true);
         self.spi.write(&[Command::ReadStatus1 as u8, DUMMY_BYTE]);
         let mut rx = [0u8; 2];
@@ -89,7 +93,7 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(rx[1])
     }
 
-    fn read_reg_2(&mut self) -> Result<u8, SPI::SpiError> {
+    fn read_reg_2(&mut self) -> Result<u8, SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.cs_drive(true);
         self.spi.write(&[Command::ReadStatus2 as u8, DUMMY_BYTE]);
         let mut rx = [0u8; 2];
@@ -98,7 +102,7 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(rx[1])
     }
 
-    fn read_reg_3(&mut self) -> Result<u8, SPI::SpiError> {
+    fn read_reg_3(&mut self) -> Result<u8, SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.cs_drive(true);
         self.spi.write(&[Command::ReadStatus3 as u8, DUMMY_BYTE]);
         let mut rx = [0u8; 2];
@@ -107,7 +111,10 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(rx[1])
     }
 
-    pub fn write_reg_1(&mut self, data: u8) -> Result<(), SPI::SpiError> {
+    pub fn write_reg_1(
+        &mut self,
+        data: u8,
+    ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.write_enable();
         self.cs_drive(true);
         self.spi.write(&[Command::WriteStatus1 as u8, data]);
@@ -116,7 +123,10 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
-    pub fn write_reg_2(&mut self, data: u8) -> Result<(), SPI::SpiError> {
+    pub fn write_reg_2(
+        &mut self,
+        data: u8,
+    ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.write_enable();
         self.cs_drive(true);
         self.spi.write(&[Command::WriteStatus2 as u8, data]);
@@ -125,7 +135,10 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
-    pub fn write_reg_3(&mut self, data: u8) -> Result<(), SPI::SpiError> {
+    pub fn write_reg_3(
+        &mut self,
+        data: u8,
+    ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.write_enable();
         self.cs_drive(true);
         self.spi.write(&[Command::WriteStatus3 as u8, data]);
@@ -134,15 +147,18 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
-    pub fn wait_for_writing(&mut self, timeout: u32) -> Result<(), SPI::SpiError> {
-        let rx = self.read_reg_1().unwrap();
+    pub fn wait_for_writing(
+        &mut self,
+        timeout: u32,
+    ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
+        let rx = self.read_reg_1()?;
         while rx & Status1::Busy as u8 != 0 {
             self.timer.delay_us(timeout);
         }
         Ok(())
     }
 
-    pub fn find_chip(&mut self) -> Result<(), SPI::SpiError> {
+    pub fn find_chip(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.cs_drive(true);
         self.spi
             .write(&[Command::JEDECID as u8, DUMMY_BYTE, DUMMY_BYTE, DUMMY_BYTE]);
@@ -189,7 +205,7 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
-    pub fn erase_chip(&mut self) -> Result<(), SPI::SpiError> {
+    pub fn erase_chip(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.lock();
         self.write_enable();
         self.cs_drive(true);
@@ -201,7 +217,10 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
-    pub fn erase_sector(&mut self, sector_number: u32) -> Result<(), SPI::SpiError> {
+    pub fn erase_sector(
+        &mut self,
+        sector_number: u32,
+    ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.lock();
         self.write_enable();
         self.cs_drive(true);
@@ -218,7 +237,10 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
-    pub fn erase_block(&mut self, block_number: u32) -> Result<(), SPI::SpiError> {
+    pub fn erase_block(
+        &mut self,
+        block_number: u32,
+    ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.lock();
         self.write_enable();
         self.cs_drive(true);
