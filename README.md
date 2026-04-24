@@ -7,9 +7,11 @@ A no_std spi flash driver for Winbond W25Q and similar devices
 | Module | Description |
 |--------|-------------|
 | device | Device-specific logic (manufacturer detection, status registers, etc.) |
+| error | Error types for the library |
 | interface | Trait definitions for SPI interface, CS pin, and delay |
-| types | Type definitions for commands, status enums, and sizes |
 | misc | Miscellaneous utility functions (address conversions, etc.) |
+| mock | Mock implementations for testing (only available when "std" feature is enabled) |
+| types | Type definitions for commands, status enums, and sizes |
 
 ## Usage
 
