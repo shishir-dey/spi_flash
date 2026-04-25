@@ -27,7 +27,7 @@ spi_flash = { path = "path/to/spi_flash" }
 | Function | Description |
 |----------|-------------|
 | `new` | Creates a new `SpiFlash` instance |
-| `manufactor` | Returns the manufactor of the device |
+| `manufacturer` | Returns the manufacturer of the device |
 | `size` | Returns the size of the device |
 | `memory_type` | Returns the memory type of the device |
 | `page_count` | Returns the number of pages in the device |

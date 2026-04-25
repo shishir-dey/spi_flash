@@ -12,7 +12,7 @@ pub struct SpiFlash<SPI: SpiInterface, CS: CsPin, Timer: Delay> {
     spi: SPI,
     cs: CS,
     timer: Timer,
-    manufactor: Manufactor,
+    manufacturer: Manufacturer,
     size: Size,
     initialised: bool,
     memory_type: u8,
@@ -34,7 +34,7 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
             spi,
             cs,
             timer,
-            manufactor: Manufactor::Error,
+            manufacturer: Manufacturer::Error,
             size: Size::Error,
             initialised: false,
             memory_type: 0,
@@ -53,24 +53,24 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         dev.spi.read(&mut rx);
         dev.cs_drive(false);
         match rx[1] {
-            0xEF => dev.manufactor = Manufactor::Winbond,
-            0x9D => dev.manufactor = Manufactor::Issi,
-            0x20 => dev.manufactor = Manufactor::Micron,
-            0xC8 => dev.manufactor = Manufactor::GigaDevice,
-            0xC2 => dev.manufactor = Manufactor::Macronix,
-            0x01 => dev.manufactor = Manufactor::Spansion,
-            0x37 => dev.manufactor = Manufactor::Amic,
-            0xBF => dev.manufactor = Manufactor::Sst,
-            0xAD => dev.manufactor = Manufactor::Hyundai,
-            0x1F => dev.manufactor = Manufactor::Atmel,
-            0xA1 => dev.manufactor = Manufactor::Fudan,
-            0x8C => dev.manufactor = Manufactor::Esmt,
-            0x89 => dev.manufactor = Manufactor::Intel,
-            0x62 => dev.manufactor = Manufactor::Sanyo,
-            0x04 => dev.manufactor = Manufactor::Fujitsu,
-            0x1C => dev.manufactor = Manufactor::Eon,
-            0x85 => dev.manufactor = Manufactor::Puya,
-            _ => dev.manufactor = Manufactor::Error,
+            0xEF => dev.manufacturer = Manufacturer::Winbond,
+            0x9D => dev.manufacturer = Manufacturer::Issi,
+            0x20 => dev.manufacturer = Manufacturer::Micron,
+            0xC8 => dev.manufacturer = Manufacturer::GigaDevice,
+            0xC2 => dev.manufacturer = Manufacturer::Macronix,
+            0x01 => dev.manufacturer = Manufacturer::Spansion,
+            0x37 => dev.manufacturer = Manufacturer::Amic,
+            0xBF => dev.manufacturer = Manufacturer::Sst,
+            0xAD => dev.manufacturer = Manufacturer::Hyundai,
+            0x1F => dev.manufacturer = Manufacturer::Atmel,
+            0xA1 => dev.manufacturer = Manufacturer::Fudan,
+            0x8C => dev.manufacturer = Manufacturer::Esmt,
+            0x89 => dev.manufacturer = Manufacturer::Intel,
+            0x62 => dev.manufacturer = Manufacturer::Sanyo,
+            0x04 => dev.manufacturer = Manufacturer::Fujitsu,
+            0x1C => dev.manufacturer = Manufacturer::Eon,
+            0x85 => dev.manufacturer = Manufacturer::Puya,
+            _ => dev.manufacturer = Manufacturer::Error,
         }
         dev.memory_type = rx[2];
         match rx[3] {
@@ -93,8 +93,8 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(dev)
     }
 
-    pub fn manufactor(&self) -> Manufactor {
-        self.manufactor
+    pub fn manufacturer(&self) -> Manufacturer {
+        self.manufacturer
     }
 
     pub fn size(&self) -> Size {
