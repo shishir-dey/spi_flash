@@ -122,6 +122,50 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
+    pub(crate) fn read(
+        &mut self,
+        address: u32,
+        data: &mut [u8],
+        size: u32,
+    ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
+        self.cs_drive(true)?;
+
+        if self.block_count >= 512 {
+            self.spi
+                .write(&[
+                    Command::ReadData4Add as u8,
+                    ((address & 0xFF000000) >> 24) as u8,
+                    ((address & 0x00FF0000) >> 16) as u8,
+                    ((address & 0x0000FF00) >> 8) as u8,
+                    (address & 0x000000FF) as u8,
+                ])
+                .map_err(|e| {
+                    let _ = self.cs_drive(false);
+                    SpiFlashError::Spi(e)
+                })?;
+        } else {
+            self.spi
+                .write(&[
+                    Command::ReadData3Add as u8,
+                    ((address & 0x00FF0000) >> 16) as u8,
+                    ((address & 0x0000FF00) >> 8) as u8,
+                    (address & 0x000000FF) as u8,
+                ])
+                .map_err(|e| {
+                    let _ = self.cs_drive(false);
+                    SpiFlashError::Spi(e)
+                })?;
+        }
+
+        self.spi.read(&mut data[..size as usize]).map_err(|e| {
+            let _ = self.cs_drive(false);
+            SpiFlashError::Spi(e)
+        })?;
+
+        self.cs_drive(false)?;
+        Ok(())
+    }
+
     pub(crate) fn write(
         &mut self,
         page_number: u32,
