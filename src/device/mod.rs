@@ -94,5 +94,7 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
     }
 }
 
+mod erase;
 mod internal;
-mod public;
+mod read;
+mod write;
