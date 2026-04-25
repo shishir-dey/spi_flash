@@ -1,5 +1,5 @@
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
-pub enum Manufactor {
+pub enum Manufacturer {
     Error = 0,
     Winbond = 0xEF,
     Issi = 0x9D,
