@@ -92,6 +92,30 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
 
         Ok(dev)
     }
+
+    pub fn manufactor(&self) -> Manufactor {
+        self.manufactor
+    }
+
+    pub fn size(&self) -> Size {
+        self.size
+    }
+
+    pub fn memory_type(&self) -> u8 {
+        self.memory_type
+    }
+
+    pub fn page_count(&self) -> u32 {
+        self.page_count
+    }
+
+    pub fn sector_count(&self) -> u32 {
+        self.sector_count
+    }
+
+    pub fn block_count(&self) -> u32 {
+        self.block_count
+    }
 }
 
 mod erase;
