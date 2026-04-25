@@ -9,24 +9,28 @@ pub const BLOCK_SIZE: u32 = 65536;
 
 #[allow(dead_code)]
 pub struct SpiFlash<SPI: SpiInterface, CS: CsPin, Timer: Delay> {
-    pub spi: SPI,
-    pub cs: CS,
-    pub timer: Timer,
-    pub manufactor: Manufactor,
-    pub size: Size,
-    pub initialised: bool,
-    pub memory_type: u8,
-    pub lock: bool,
-    pub reserved: u8,
-    pub pin: u32,
-    pub page_count: u32,
-    pub sector_count: u32,
-    pub block_count: u32,
+    spi: SPI,
+    cs: CS,
+    timer: Timer,
+    manufactor: Manufactor,
+    size: Size,
+    initialised: bool,
+    memory_type: u8,
+    lock: bool,
+    reserved: u8,
+    pin: u32,
+    page_count: u32,
+    sector_count: u32,
+    block_count: u32,
 }
 
 impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
-    pub fn new(spi: SPI, cs: CS, timer: Timer) -> Self {
-        Self {
+    pub fn new(
+        spi: SPI,
+        cs: CS,
+        timer: Timer,
+    ) -> Result<Self, SpiFlashError<SPI::SpiError, CS::IoError>> {
+        let mut dev = Self {
             spi,
             cs,
             timer,
@@ -40,10 +44,56 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
             page_count: 0,
             sector_count: 0,
             block_count: 0,
+        };
+
+        dev.cs_drive(true);
+        dev.spi
+            .write(&[Command::JEDECID as u8, DUMMY_BYTE, DUMMY_BYTE, DUMMY_BYTE]);
+        let mut rx = [0u8; 4];
+        dev.spi.read(&mut rx);
+        dev.cs_drive(false);
+        match rx[1] {
+            0xEF => dev.manufactor = Manufactor::Winbond,
+            0x9D => dev.manufactor = Manufactor::Issi,
+            0x20 => dev.manufactor = Manufactor::Micron,
+            0xC8 => dev.manufactor = Manufactor::GigaDevice,
+            0xC2 => dev.manufactor = Manufactor::Macronix,
+            0x01 => dev.manufactor = Manufactor::Spansion,
+            0x37 => dev.manufactor = Manufactor::Amic,
+            0xBF => dev.manufactor = Manufactor::Sst,
+            0xAD => dev.manufactor = Manufactor::Hyundai,
+            0x1F => dev.manufactor = Manufactor::Atmel,
+            0xA1 => dev.manufactor = Manufactor::Fudan,
+            0x8C => dev.manufactor = Manufactor::Esmt,
+            0x89 => dev.manufactor = Manufactor::Intel,
+            0x62 => dev.manufactor = Manufactor::Sanyo,
+            0x04 => dev.manufactor = Manufactor::Fujitsu,
+            0x1C => dev.manufactor = Manufactor::Eon,
+            0x85 => dev.manufactor = Manufactor::Puya,
+            _ => dev.manufactor = Manufactor::Error,
         }
+        dev.memory_type = rx[2];
+        match rx[3] {
+            0x11 => dev.size = Size::Mbit1,
+            0x12 => dev.size = Size::Mbit2,
+            0x13 => dev.size = Size::Mbit4,
+            0x14 => dev.size = Size::Mbit8,
+            0x15 => dev.size = Size::Mbit16,
+            0x16 => dev.size = Size::Mbit32,
+            0x17 => dev.size = Size::Mbit64,
+            0x18 => dev.size = Size::Mbit128,
+            0x19 => dev.size = Size::Mbit256,
+            0x20 => dev.size = Size::Mbit512,
+            _ => dev.size = Size::Error,
+        }
+        dev.block_count = dev.size as u32 * 16;
+        dev.sector_count = dev.block_count * 16;
+        dev.page_count = dev.sector_count * 16;
+
+        Ok(dev)
     }
 
-    pub fn lock(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
+    fn lock(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         while self.lock {
             self.timer.delay_us(1000);
         }
@@ -51,15 +101,12 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
-    pub fn unlock(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
+    fn unlock(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.lock = false;
         Ok(())
     }
 
-    pub fn cs_drive(
-        &mut self,
-        state: bool,
-    ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
+    fn cs_drive(&mut self, state: bool) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         match state {
             true => {
                 self.cs.set_low();
@@ -71,14 +118,14 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
-    pub fn write_enable(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
+    fn write_enable(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.cs_drive(true);
         self.spi.write(&[Command::WriteEnable as u8]);
         self.cs_drive(false);
         Ok(())
     }
 
-    pub fn write_disable(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
+    fn write_disable(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.cs_drive(true);
         self.spi.write(&[Command::WriteDisable as u8]);
         self.cs_drive(false);
@@ -112,10 +159,7 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(rx[1])
     }
 
-    pub fn write_reg_1(
-        &mut self,
-        data: u8,
-    ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
+    fn write_reg_1(&mut self, data: u8) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.write_enable();
         self.cs_drive(true);
         self.spi.write(&[Command::WriteStatus1 as u8, data]);
@@ -124,10 +168,7 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
-    pub fn write_reg_2(
-        &mut self,
-        data: u8,
-    ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
+    fn write_reg_2(&mut self, data: u8) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.write_enable();
         self.cs_drive(true);
         self.spi.write(&[Command::WriteStatus2 as u8, data]);
@@ -136,10 +177,7 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
-    pub fn write_reg_3(
-        &mut self,
-        data: u8,
-    ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
+    fn write_reg_3(&mut self, data: u8) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
         self.write_enable();
         self.cs_drive(true);
         self.spi.write(&[Command::WriteStatus3 as u8, data]);
@@ -148,7 +186,7 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
-    pub fn wait_for_writing(
+    fn wait_for_writing(
         &mut self,
         timeout: u32,
     ) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
@@ -159,53 +197,6 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
             }
             self.timer.delay_us(timeout);
         }
-        Ok(())
-    }
-
-    pub fn find_chip(&mut self) -> Result<(), SpiFlashError<SPI::SpiError, CS::IoError>> {
-        self.cs_drive(true);
-        self.spi
-            .write(&[Command::JEDECID as u8, DUMMY_BYTE, DUMMY_BYTE, DUMMY_BYTE]);
-        let mut rx = [0u8; 4];
-        self.spi.read(&mut rx);
-        self.cs_drive(false);
-        match rx[1] {
-            0xEF => self.manufactor = Manufactor::Winbond,
-            0x9D => self.manufactor = Manufactor::Issi,
-            0x20 => self.manufactor = Manufactor::Micron,
-            0xC8 => self.manufactor = Manufactor::GigaDevice,
-            0xC2 => self.manufactor = Manufactor::Macronix,
-            0x01 => self.manufactor = Manufactor::Spansion,
-            0x37 => self.manufactor = Manufactor::Amic,
-            0xBF => self.manufactor = Manufactor::Sst,
-            0xAD => self.manufactor = Manufactor::Hyundai,
-            0x1F => self.manufactor = Manufactor::Atmel,
-            0xA1 => self.manufactor = Manufactor::Fudan,
-            0x8C => self.manufactor = Manufactor::Esmt,
-            0x89 => self.manufactor = Manufactor::Intel,
-            0x62 => self.manufactor = Manufactor::Sanyo,
-            0x04 => self.manufactor = Manufactor::Fujitsu,
-            0x1C => self.manufactor = Manufactor::Eon,
-            0x85 => self.manufactor = Manufactor::Puya,
-            _ => self.manufactor = Manufactor::Error,
-        }
-        self.memory_type = rx[2];
-        match rx[3] {
-            0x11 => self.size = Size::Mbit1,
-            0x12 => self.size = Size::Mbit2,
-            0x13 => self.size = Size::Mbit4,
-            0x14 => self.size = Size::Mbit8,
-            0x15 => self.size = Size::Mbit16,
-            0x16 => self.size = Size::Mbit32,
-            0x17 => self.size = Size::Mbit64,
-            0x18 => self.size = Size::Mbit128,
-            0x19 => self.size = Size::Mbit256,
-            0x20 => self.size = Size::Mbit512,
-            _ => self.size = Size::Error,
-        }
-        self.block_count = self.size as u32 * 16;
-        self.sector_count = self.block_count * 16;
-        self.page_count = self.sector_count * 16;
         Ok(())
     }
 
@@ -261,7 +252,7 @@ impl<SPI: SpiInterface, CS: CsPin, Timer: Delay> SpiFlash<SPI, CS, Timer> {
         Ok(())
     }
 
-    pub fn write(
+    fn write(
         &mut self,
         page_number: u32,
         data: &[u8],
