@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>spi_flash - no_std SPI flash driver</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
+    <!-- SEO and Metadata -->
+    <meta name="author" content="Shishir Dey">
+    <meta name="description"
+        content="Documentation for spi_flash, a no_std SPI flash driver for Winbond W25Q and similar devices.">
+    <meta name="keywords"
+        content="Rust, no_std, SPI, flash memory, driver, embedded, Winbond, W25Q, hardware, Shishir Dey">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="spi_flash Driver Documentation">
+    <meta property="og:description" content="Technical documentation for the spi_flash no_std driver.">
+    <meta property="og:type" content="article">
+    <meta property="article:author" content="Shishir Dey">
+    <meta name="theme-color" id="theme-color-meta" content="#f0ece4">
+    <script>
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'light');
+    </script>
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      "headline": "spi_flash Driver Documentation",
+      "author": {
+        "@type": "Person",
+        "name": "Shishir Dey"
+      },
+      "description": "Documentation for spi_flash, a no_std SPI flash driver for Winbond W25Q and similar devices.",
+      "keywords": "Rust, no_std, SPI, flash memory, driver, embedded, Winbond"
+    }
+    </script>
+    <style>
+        :root {
+            --glass-bg: #f5f3ef;
+            --glass-border: #d8d4cd;
+            --glass-highlight: #ece8e0;
+            --text-primary: #2f3437;
+            --text-secondary: #5f666d;
+            --accent: #2b5fb8;
+            --accent-glow: rgba(43, 95, 184, 0.18);
+            --success: #1f7a52;
+            --warning: #b07a1d;
+            --code-bg: #ece8e0;
+            --bg-base: #f0ece4;
+            --surface-shadow: 0 12px 36px rgba(48, 45, 41, 0.08);
+        }
+
+        [data-theme="dark"] {
+            --glass-bg: #26221d;
+            --glass-border: #3a342e;
+            --glass-highlight: #312c26;
+            --text-primary: #f0ebe3;
+            --text-secondary: #cbc2b5;
+            --accent: #8ab4ff;
+            --accent-glow: rgba(138, 180, 255, 0.2);
+            --code-bg: #1f1b17;
+            --bg-base: #161311;
+            --success: #7ecfa9;
+            --warning: #d2a558;
+            --surface-shadow: 0 16px 36px rgba(0, 0, 0, 0.32);
+        }
+
+        html {
+            background-color: var(--bg-base);
+            transition: background-color 0.3s ease;
+        }
+
+        body {
+            font-family: "Public Sans", "Avenir Next", "Segoe UI", sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            line-height: 1.55;
+            font-size: 15.5px;
+            letter-spacing: -0.004em;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.4) 0%, transparent 42%),
+                radial-gradient(circle at 84% 80%, rgba(229, 223, 210, 0.55) 0%, transparent 38%),
+                repeating-linear-gradient(120deg, rgba(59, 53, 46, 0.03) 0, rgba(59, 53, 46, 0.03) 1px, transparent 1px, transparent 6px);
+            z-index: -1;
+        }
+
+        [data-theme="dark"] body::before {
+            background-image:
+                radial-gradient(circle at 12% 18%, rgba(66, 61, 55, 0.36) 0%, transparent 42%),
+                radial-gradient(circle at 84% 80%, rgba(50, 44, 39, 0.5) 0%, transparent 38%),
+                repeating-linear-gradient(120deg, rgba(235, 225, 210, 0.03) 0, rgba(235, 225, 210, 0.03) 1px, transparent 1px, transparent 6px);
+        }
+
+        .glass-container {
+            position: relative;
+            max-width: 920px;
+            margin: 48px auto;
+            padding: 44px;
+            background: var(--glass-bg);
+            border-radius: 22px;
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--surface-shadow);
+            transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            color: var(--text-primary);
+            font-weight: 700;
+            letter-spacing: -0.015em;
+        }
+
+        h1 {
+            font-size: 2.45rem;
+            line-height: 1.2;
+            margin-bottom: 0.35em;
+        }
+
+        .version-chip {
+            font-size: 0.4em;
+            vertical-align: middle;
+            color: var(--text-secondary);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 4px 8px;
+            margin-left: 10px;
+            font-weight: 600;
+        }
+
+        .vendor-selector {
+            margin: 0 0 18px;
+            width: min(360px, 100%);
+            position: relative;
+        }
+
+        .vendor-selector::after {
+            content: "▾";
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            pointer-events: none;
+        }
+
+        .vendor-selector select {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 100%;
+            font-family: "Public Sans", "Avenir Next", "Segoe UI", sans-serif;
+            font-size: 0.96rem;
+            color: var(--text-primary);
+            background: var(--glass-highlight);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 11px 40px 11px 14px;
+            outline: none;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        }
+
+        .vendor-selector select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        }
+
+        .vendor-content[hidden] {
+            display: none;
+        }
+
+        h2 {
+            font-size: 1.68rem;
+            margin-top: 1.8em;
+            margin-bottom: 0.95em;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 0.5em;
+            color: var(--text-primary);
+        }
+
+        h3 {
+            font-size: 1.24rem;
+            margin-top: 1.35em;
+            color: var(--text-primary);
+            opacity: 0.93;
+        }
+
+        p,
+        li {
+            color: var(--text-secondary);
+            font-size: 0.99rem;
+        }
+
+        strong {
+            color: var(--text-primary);
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        a:hover {
+            color: var(--accent);
+            text-decoration: underline;
+        }
+
+        /* Tables */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 14px;
+            margin: 20px 0;
+            border: 1px solid var(--glass-border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--glass-highlight);
+        }
+
+        th,
+        td {
+            padding: 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+        }
+
+        th {
+            background: #e4dfd5;
+            color: var(--text-primary);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.045em;
+        }
+
+        [data-theme="dark"] th {
+            background: #322c25;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(127, 116, 103, 0.12);
+        }
+
+        /* Code Blocks */
+        pre {
+            background: var(--code-bg);
+            padding: 20px;
+            border-radius: 12px;
+            overflow-x: auto;
+            border: 1px solid var(--glass-border);
+            font-family: "JetBrains Mono", "SF Mono", "Menlo", "Monaco", "Courier New", monospace;
+            font-size: 0.86rem;
+            color: var(--text-primary);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        code {
+            font-family: "JetBrains Mono", "SF Mono", "Menlo", "Monaco", "Courier New", monospace;
+            background: var(--glass-highlight);
+            padding: 3px 6px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            color: var(--text-primary);
+        }
+
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+        }
+
+        /* Mermaid Diagrams */
+        .mermaid {
+            background: var(--glass-highlight);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 30px 0;
+            overflow-x: auto;
+            text-align: center;
+            border: 1px solid var(--glass-border);
+        }
+
+        [data-theme="dark"] .mermaid {
+            background: #2e2924;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--glass-border);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* Top Controls */
+        .top-controls {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .theme-switch-wrapper {
+            display: flex;
+            align-items: center;
+            background: var(--glass-highlight);
+            padding: 6px 8px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+        }
+
+        .github-link-wrapper {
+            display: flex;
+            align-items: center;
+            background: var(--glass-highlight);
+            padding: 6px 8px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+        }
+
+        .theme-switch {
+            display: inline-block;
+            height: 28px;
+            position: relative;
+            width: 52px;
+        }
+
+        .theme-switch input {
+            display: none;
+        }
+
+        .slider {
+            background-color: rgba(108, 99, 90, 0.22);
+            bottom: 0;
+            cursor: pointer;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            transition: 0.3s;
+            border-radius: 9px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .slider:before {
+            background-color: var(--glass-bg);
+            bottom: 2px;
+            content: "";
+            height: 22px;
+            left: 2px;
+            position: absolute;
+            transition: 0.3s;
+            width: 22px;
+            border-radius: 6px;
+            border: 1px solid var(--glass-border);
+        }
+
+        input:checked+.slider {
+            background-color: var(--accent-glow);
+            border-color: var(--accent);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(24px);
+        }
+
+        .theme-label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0;
+            margin: 0 6px;
+            color: var(--text-secondary);
+            line-height: 1;
+        }
+
+        .icon {
+            font-size: 15px;
+            margin: 0;
+            color: var(--text-secondary);
+        }
+
+        .github-link-wrapper .icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .github-link-wrapper .icon:hover {
+            background: rgba(108, 99, 90, 0.16);
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        [data-theme="dark"] .github-link-wrapper .icon:hover {
+            background: rgba(240, 235, 227, 0.12);
+        }
+
+        /* Utilities */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: 600;
+            background: var(--accent);
+            color: white;
+            margin-right: 8px;
+        }
+
+        @media (max-width: 900px) {
+            .glass-container {
+                margin: 30px 18px;
+                padding: 32px 24px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .glass-container {
+                margin: 18px 12px;
+                padding: 22px 16px 24px;
+                border-radius: 16px;
+            }
+
+            .top-controls {
+                position: static;
+                justify-content: flex-end;
+                margin-bottom: 14px;
+            }
+
+            h1 {
+                font-size: 1.86rem;
+                line-height: 1.24;
+                margin-bottom: 0.3em;
+            }
+
+            .version-chip {
+                display: inline-block;
+                margin-top: 8px;
+                margin-left: 0;
+                font-size: 0.46em;
+            }
+
+            .vendor-selector {
+                margin-bottom: 14px;
+                width: 100%;
+            }
+
+            h2 {
+                font-size: 1.36rem;
+            }
+
+            h3 {
+                font-size: 1.08rem;
+            }
+
+            p,
+            li {
+                font-size: 0.94rem;
+            }
+
+            th,
+            td {
+                padding: 11px;
+                font-size: 0.89rem;
+            }
+
+            pre {
+                padding: 14px;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+    <!-- Mermaid Diagram Support -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+        const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default';
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: theme,
+            themeVariables: { fontFamily: 'Public Sans' }
+        });
+    </script>
+</head>
+
+<body>
+
+    <div class="glass-container">
+        <div class="top-controls">
+            <div class="theme-switch-wrapper">
+                <span class="theme-label">🌙</span>
+                <label class="theme-switch" for="checkbox">
+                    <input type="checkbox" id="checkbox" />
+                    <div class="slider round"></div>
+                </label>
+                <span class="theme-label">☀️</span>
+            </div>
+            <div class="github-link-wrapper">
+                <a href="https://github.com/shishir-dey/spi_flash" target="_blank" class="icon"
+                    title="GitHub Repository">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path
+                            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+                    </svg>
+                </a>
+            </div>
+        </div>
+
+        <h1>spi_flash Driver Documentation<span class="version-chip">v0.1.0</span>
+        </h1>
+
+        <div class="vendor-selector">
+            <select id="vendor-selector" aria-label="Device selector">
+                <option value="winbond" selected>Winbond W25Q & Similar</option>
+            </select>
+        </div>
+
+        <div class="vendor-content" data-vendor="winbond">
+            <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 30px 0;">
+
+            <h2>Table of Contents</h2>
+            <ol>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#project-structure">Project Structure</a></li>
+                <li><a href="#api-reference">Public API Reference</a></li>
+                <li><a href="#usage">Usage Example</a></li>
+                <li><a href="#communication-flow">Communication Flow</a></li>
+            </ol>
+
+            <h2 id="overview">1. Overview</h2>
+            <p><strong>spi_flash</strong> is a <code>no_std</code> compatible SPI flash driver designed primarily for
+                Winbond W25Q series and similar NOR flash memory devices. It provides a clean, safe, and efficient API
+                for interacting with SPI flash memory in embedded Rust applications.</p>
+
+            <h3>Key Features</h3>
+            <ul>
+                <li><code>no_std</code> support out of the box</li>
+                <li>Full read, write, and erase capabilities (page, sector, block)</li>
+                <li>Automatic manufacturer and capacity detection</li>
+                <li>Mock implementations for testing (with <code>std</code> feature)</li>
+                <li>Type-safe command and status representations</li>
+            </ul>
+
+            <h2 id="project-structure">2. Project Structure</h2>
+            <p>The library is organized into several modules to separate concerns and maintain clean architecture.</p>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Module</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>device</code></td>
+                            <td>Device-specific logic (manufacturer detection, status registers, etc.)</td>
+                        </tr>
+                        <tr>
+                            <td><code>error</code></td>
+                            <td>Error types for the library</td>
+                        </tr>
+                        <tr>
+                            <td><code>interface</code></td>
+                            <td>Trait definitions for SPI interface, CS pin, and delay</td>
+                        </tr>
+                        <tr>
+                            <td><code>misc</code></td>
+                            <td>Miscellaneous utility functions (address conversions, etc.)</td>
+                        </tr>
+                        <tr>
+                            <td><code>mock</code></td>
+                            <td>Mock implementations for testing (only available when "std" feature is enabled)</td>
+                        </tr>
+                        <tr>
+                            <td><code>types</code></td>
+                            <td>Type definitions for commands, status enums, and sizes</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 id="api-reference">3. Public API Reference</h2>
+
+            <p>This section provides a detailed, man-page style documentation for the core <code>SpiFlash</code> driver.
+                All operations are safe and block until completion (or until an error is encountered).</p>
+
+            <h3>Initialization & Setup</h3>
+            <div class="table-wrapper">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td><strong>Signature</strong></td>
+                            <td><code>pub fn new(spi: SPI, cs: CS, timer: Timer) -> Result&lt;Self, SpiFlashError&gt;</code>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Description</strong></td>
+                            <td>Constructs a new <code>SpiFlash</code> instance and initializes communication with the
+                                device. This function automatically issues a JEDEC ID command to detect the flash
+                                manufacturer, memory type, size, and computes the internal page, sector, and block
+                                counts.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Arguments</strong></td>
+                            <td>
+                                <ul>
+                                    <li><code>spi</code>: An object implementing the <code>SpiInterface</code> trait.
+                                    </li>
+                                    <li><code>cs</code>: An object implementing the <code>CsPin</code> trait for chip
+                                        select control.</li>
+                                    <li><code>timer</code>: An object implementing the <code>Delay</code> trait for
+                                        blocking operations.</li>
+                                </ul>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Device Information</h3>
+            <p>These methods return information about the detected device properties. They do not initiate SPI
+                transactions and are virtually instantaneous.</p>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Signature</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>manufacturer</strong></td>
+                            <td><code>fn manufacturer(&amp;self) -&gt; Manufacturer</code></td>
+                            <td>Returns the detected flash manufacturer (e.g., Winbond, Macronix).</td>
+                        </tr>
+                        <tr>
+                            <td><strong>size</strong></td>
+                            <td><code>fn size(&amp;self) -&gt; Size</code></td>
+                            <td>Returns the capacity size of the device (e.g., Mbit1, Mbit256).</td>
+                        </tr>
+                        <tr>
+                            <td><strong>memory_type</strong></td>
+                            <td><code>fn memory_type(&amp;self) -&gt; u8</code></td>
+                            <td>Returns the specific memory type identifier returned by the JEDEC ID query.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>page_count</strong></td>
+                            <td><code>fn page_count(&amp;self) -&gt; u32</code></td>
+                            <td>Total number of 256-byte pages in the device.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>sector_count</strong></td>
+                            <td><code>fn sector_count(&amp;self) -&gt; u32</code></td>
+                            <td>Total number of 4KB sectors in the device.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>block_count</strong></td>
+                            <td><code>fn block_count(&amp;self) -&gt; u32</code></td>
+                            <td>Total number of 64KB blocks in the device.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Read Operations</h3>
+            <p>Read functions are bounded by the internal flash structures. Attempting to read beyond the boundary of
+                the specified unit (page/sector/block) using an offset will return a
+                <code>SpiFlashError::Protocol</code>.
+            </p>
+            <div class="table-wrapper">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td><strong>Signature</strong></td>
+                            <td><code>pub fn read_page(&amp;mut self, page_number: u32, data: &amp;mut [u8], size: u32, offset: u32) -&gt; Result&lt;(), SpiFlashError&gt;</code><br>
+                                <code>pub fn read_sector(&amp;mut self, sector_number: u32, data: &amp;mut [u8], size: u32, offset: u32) -&gt; Result&lt;(), SpiFlashError&gt;</code><br>
+                                <code>pub fn read_block(&amp;mut self, block_number: u32, data: &amp;mut [u8], size: u32, offset: u32) -&gt; Result&lt;(), SpiFlashError&gt;</code>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Description</strong></td>
+                            <td>Reads a sequence of bytes from a specific page, sector, or block, bounded by the unit's
+                                size limit.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Arguments</strong></td>
+                            <td>
+                                <ul>
+                                    <li><code>number</code>: The 0-indexed index of the unit.</li>
+                                    <li><code>data</code>: The mutable buffer to store the retrieved data.</li>
+                                    <li><code>size</code>: The exact number of bytes to read into the buffer.</li>
+                                    <li><code>offset</code>: The starting offset inside the specific unit to read from.
+                                        Must be less than the unit's total size (e.g., < 256 for page).</li>
+                                </ul>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Write Operations</h3>
+            <p>Before writing, ensure that the target region has been erased. Flash memory can only be written from 1 to
+                0; a 0 cannot be written back to a 1 without an erase cycle. The driver handles cross-page boundary
+                logic internally for higher-level writes.</p>
+            <div class="table-wrapper">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td><strong>Address Write</strong></td>
+                            <td><code>pub fn write_address(&amp;mut self, address: u32, data: &amp;[u8], size: u32) -&gt; Result&lt;(), SpiFlashError&gt;</code><br>
+                                Writes data sequentially starting from an absolute byte address. Automatically fragments
+                                the operation across page boundaries as required by the flash controller.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Unit Writes</strong></td>
+                            <td><code>pub fn write_page(&amp;mut self, page_number: u32, data: &amp;[u8], size: u32, offset: u32) -&gt; Result&lt;(), SpiFlashError&gt;</code><br>
+                                <code>pub fn write_sector(&amp;mut self, sector_number: u32, data: &amp;[u8], size: u32, offset: u32) -&gt; Result&lt;(), SpiFlashError&gt;</code><br>
+                                <code>pub fn write_block(&amp;mut self, block_number: u32, data: &amp;[u8], size: u32, offset: u32) -&gt; Result&lt;(), SpiFlashError&gt;</code><br>
+                                Writes data into a specific unit, bounded by the maximum capacity of that unit minus the
+                                starting offset.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Erase Operations</h3>
+            <p>Erasing resets all bits in the targeted region to 1 (0xFF). Erase operations are typically much slower
+                than read or write operations. The driver will actively block until the internal erase cycle is fully
+                completed by polling the status register.</p>
+            <div class="table-wrapper">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td><strong>erase_chip</strong></td>
+                            <td><code>pub fn erase_chip(&amp;mut self) -&gt; Result&lt;(), SpiFlashError&gt;</code><br>
+                                Erases the entire flash device. Can take several seconds on large chips.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>erase_sector</strong></td>
+                            <td><code>pub fn erase_sector(&amp;mut self, sector_number: u32) -&gt; Result&lt;(), SpiFlashError&gt;</code><br>
+                                Erases a specific 4KB sector.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>erase_block</strong></td>
+                            <td><code>pub fn erase_block(&amp;mut self, block_number: u32) -&gt; Result&lt;(), SpiFlashError&gt;</code><br>
+                                Erases a specific 64KB block.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h2 id="usage">4. Usage Example</h2>
+
+            <p>Add this as a dependency in your <code>Cargo.toml</code>:</p>
+            <pre><code class="language-toml">[dependencies]
+spi_flash = { path = "path/to/spi_flash" }</code></pre>
+
+            <p>Example of initializing and reading a page:</p>
+            <pre><code class="language-rust">// Initialize your SPI bus, Chip Select pin, and Delay provider
+// let spi = ...;
+// let cs = ...;
+// let delay = ...;
+
+let mut flash = SpiFlash::new(spi, cs, delay).unwrap();
+
+// Read device info
+let mfg = flash.manufacturer();
+let size = flash.size();
+
+// Read a page from address 0x000000
+let mut buffer = [0u8; 256];
+flash.read_page(0x000000, &mut buffer).unwrap();</code></pre>
+
+            <h2 id="communication-flow">5. Communication Flow</h2>
+            <p>The standard flow for interacting with the SPI flash memory involves asserting the Chip Select (CS) pin,
+                sending a command byte, sending any required address bytes or dummy bytes, transferring data, and
+                finally deasserting CS.</p>
+
+            <div class="mermaid">
+                sequenceDiagram
+                participant Host
+                participant SPI Flash
+
+                Host->>SPI Flash: Assert CS (Low)
+                Host->>SPI Flash: Send Command Byte (e.g., 0x03 for Read)
+                Host->>SPI Flash: Send 24-bit Address
+                SPI Flash-->>Host: Stream Data out on MISO
+                Host->>SPI Flash: Deassert CS (High)
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        toggleSwitch.checked = currentTheme === 'light';
+        const themeColorMeta = document.getElementById('theme-color-meta');
+        const vendorSelector = document.getElementById('vendor-selector');
+        const vendorContentBlocks = document.querySelectorAll('.vendor-content');
+
+        function syncThemeColor() {
+            if (!themeColorMeta) {
+                return;
+            }
+            const topBarColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-base').trim();
+            if (topBarColor) {
+                themeColorMeta.setAttribute('content', topBarColor);
+            }
+        }
+
+        function switchVendorContent(vendor) {
+            vendorContentBlocks.forEach((block) => {
+                block.hidden = block.dataset.vendor !== vendor;
+            });
+        }
+
+        if (vendorSelector) {
+            // Prepared for future protocol additions (e.g., daly, jk, etc.).
+            switchVendorContent(vendorSelector.value);
+            vendorSelector.addEventListener('change', (event) => {
+                switchVendorContent(event.target.value);
+            });
+        }
+        syncThemeColor();
+
+        function switchTheme(e) {
+            if (e.target.checked) {
+                document.documentElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            syncThemeColor();
+        }
+
+        toggleSwitch.addEventListener('change', switchTheme, false);
+    </script>
+
+</body>
+
+</html>
